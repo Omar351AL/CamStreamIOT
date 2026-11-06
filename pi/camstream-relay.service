@@ -1,0 +1,15 @@
+[Unit]
+Description=CamStream camera relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+EnvironmentFile=/etc/camstream/relay.env
+ExecStart=/usr/local/bin/camstream-relay
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

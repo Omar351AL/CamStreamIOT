@@ -1,0 +1,9 @@
+relay.env
+*.env
+!*.env.example
+*.key
+*_key
+*.pem
+htpasswd
+publisher_pass
+web_login.txt

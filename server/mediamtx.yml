@@ -1,0 +1,42 @@
+# CamStream: MediaMTX config. Runs only inside /opt/camstream. The publisher password
+# is injected at install time (__PUBLISHER_PASS__); never commit the real value.
+logLevel: info
+
+api: no
+metrics: no
+pprof: no
+playback: no
+hls: no
+rtmp: no
+srt: no
+moq: no
+
+# Pi pushes here (RTSP over TCP, authenticated).
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp]
+
+# Browsers reach WebRTC signalling only through nginx on localhost.
+webrtc: yes
+webrtcAddress: 127.0.0.1:8889
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
+webrtcAdditionalHosts: [__PUBLIC_IP__]
+
+authMethod: internal
+authInternalUsers:
+  - user: publisher
+    pass: '__PUBLISHER_PASS__'
+    ips: []
+    permissions:
+      - action: publish
+        path: camera1
+  # Reading is allowed only from localhost (nginx), where basic auth is enforced.
+  - user: any
+    pass:
+    ips: ['127.0.0.1', '::1']
+    permissions:
+      - action: read
+
+paths:
+  camera1:

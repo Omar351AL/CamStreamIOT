@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CamStream</title>
+<style>
+  :root { --bg:#0f1115; --fg:#e8eaed; --muted:#9aa0a6; --card:#181b21; --line:#2a2f38; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f5f6f8; --fg:#15171a; --muted:#5f6368; --card:#fff; --line:#dadde2; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.25rem; margin:8px 0 12px; }
+  .frame { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; aspect-ratio:16/9; }
+  iframe { width:100%; height:100%; border:0; display:block; }
+  p { color:var(--muted); font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CamStream: Camera 1</h1>
+  <div class="frame"><iframe src="/cam/camera1/" allow="autoplay; fullscreen" title="Camera 1 live"></iframe></div>
+  <p>If the picture is blank, the camera or its relay is offline.</p>
+</main>
+</body>
+</html>

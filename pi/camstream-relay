@@ -1,0 +1,17 @@
+#!/bin/bash
+# Relays the camera's H.264 RTSP stream to the CamStream server without re-encoding.
+# With no CAMERA_RTSP it publishes a test pattern so the whole chain can be checked.
+# Settings come from /etc/camstream/relay.env (see relay.env.example).
+set -u
+
+if [ -n "${CAMERA_RTSP:-}" ]; then
+  exec ffmpeg -nostdin -loglevel warning \
+    -rtsp_transport tcp -timeout 10000000 -i "$CAMERA_RTSP" \
+    -map 0:v:0 -an -c:v copy \
+    -f rtsp -rtsp_transport tcp "$PUBLISH_URL"
+else
+  exec ffmpeg -nostdin -loglevel warning -re \
+    -f lavfi -i "testsrc2=size=640x360:rate=15" \
+    -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -pix_fmt yuv420p -g 30 \
+    -f rtsp -rtsp_transport tcp "$PUBLISH_URL"
+fi
