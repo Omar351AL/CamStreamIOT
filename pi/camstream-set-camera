@@ -1,0 +1,37 @@
+#!/bin/bash
+# Interactive helper: stores the camera's RTSP credentials for the relay, forces the camera's
+# main stream to H.264 at a bitrate suited to a 4G uplink, then restarts the relay.
+# The password is read silently and only written to /etc/camstream/relay.env (mode 600).
+set -euo pipefail
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+
+ENV=/etc/camstream/relay.env
+CAM_IP="${1:-192.168.1.108}"
+read -rp "Camera user [admin]: " CAM_USER; CAM_USER="${CAM_USER:-admin}"
+read -rsp "Camera password: " CAM_PASS; echo
+
+enc="$(python3 -c 'import sys,urllib.parse as u; print(u.quote(sys.argv[1], safe=""))' "$CAM_PASS")"
+base="http://$CAM_IP/cgi-bin"
+
+code="$(curl -s -m 8 --digest -u "$CAM_USER:$CAM_PASS" -o /dev/null -w '%{http_code}' "$base/magicBox.cgi?action=getSystemInfo")"
+[ "$code" = "200" ] || { echo "Camera rejected the login (HTTP $code)."; exit 1; }
+echo "Login OK."
+
+echo "Setting main stream to H.264, 15 fps, 2048 kbps ..."
+curl -s -m 8 --digest -u "$CAM_USER:$CAM_PASS" \
+  "$base/configManager.cgi?action=setConfig&Encode%5B0%5D.MainFormat%5B0%5D.Video.Compression=H.264&Encode%5B0%5D.MainFormat%5B0%5D.Video.FPS=15&Encode%5B0%5D.MainFormat%5B0%5D.Video.BitRate=2048&Encode%5B0%5D.MainFormat%5B0%5D.Video.BitRateControl=VBR&Encode%5B0%5D.MainFormat%5B0%5D.Video.GOP=30" \
+  | head -c 200; echo
+
+url="rtsp://$CAM_USER:$enc@$CAM_IP:554/cam/realmonitor?channel=1&subtype=0"
+echo "Probing the stream ..."
+ffprobe -v error -rtsp_transport tcp -select_streams v:0 \
+  -show_entries stream=codec_name,profile,width,height,avg_frame_rate -of default=nw=1 "$url" \
+  || { echo "ffprobe failed."; exit 1; }
+
+pub="$(grep '^PUBLISH_URL=' "$ENV")"
+umask 077
+printf 'CAMERA_RTSP=%s\n%s\n' "$url" "$pub" > "$ENV"
+systemctl restart camstream-relay
+sleep 6
+systemctl is-active camstream-relay
+journalctl -u camstream-relay -n 4 --no-pager | sed -E 's#(rtsp://[^:]+:)[^@]*@#\1***@#' | cut -c1-200
