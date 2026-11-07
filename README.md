@@ -28,3 +28,10 @@ With `CAMERA_RTSP` empty the relay publishes a test pattern; set it to the camer
 
 ## Secrets
 Never commit `relay.env`, passwords or keys (see `.gitignore`).
+
+## Pi network
+- `wlan0` joins the Wi-Fi/hotspot and carries all internet traffic (default route).
+- `eth0` is dedicated to the camera and static (no DHCP): `192.168.50.1/24` and `192.168.1.50/24`
+  (the Dahua factory address is `192.168.1.108`). Without a DHCP server, a DHCP-configured eth0 gets dropped.
+- Set the camera credentials with `sudo camstream-set-camera` (reads the password silently, forces H.264, restarts the relay).
+- To reach the camera's web UI from a laptop: `ssh -L 18080:192.168.1.108:80 -N <user>@<pi>` then open http://127.0.0.1:18080/.
