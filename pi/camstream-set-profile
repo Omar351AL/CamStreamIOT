@@ -1,0 +1,33 @@
+#!/bin/bash
+# Switch what the relay sends: `camstream-set-profile low` (camera sub stream, small, for weak 4G uplink)
+# or `high` (main stream, 1440p). Credentials are read from /etc/camstream/relay.env, never printed.
+set -euo pipefail
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+MODE="${1:-}"; ENV=/etc/camstream/relay.env; CAM=192.168.1.108
+[ "$MODE" = low ] || [ "$MODE" = high ] || { echo "usage: $0 low|high"; exit 2; }
+
+url="$(grep '^CAMERA_RTSP=' "$ENV" | cut -d= -f2-)"
+U="$(printf '%s' "$url" | sed -E 's#rtsp://([^:]+):.*#\1#')"
+P="$(printf '%s' "$url" | sed -E 's#rtsp://[^:]+:([^@]*)@.*#\1#' | python3 -c 'import sys,urllib.parse as u; print(u.unquote(sys.stdin.read().strip()))')"
+cfg() { curl -s -m 10 --digest -u "$U:$P" "http://$CAM/cgi-bin/configManager.cgi?action=setConfig&$1"; }
+
+if [ "$MODE" = low ]; then
+  # Sub stream: H.264, 15 fps, 1 s GOP, constant 384 kbps.
+  for res in "Width=640&Encode%5B0%5D.ExtraFormat%5B0%5D.Video.Height=360" "Width=704&Encode%5B0%5D.ExtraFormat%5B0%5D.Video.Height=576"; do
+    out="$(cfg "Encode%5B0%5D.ExtraFormat%5B0%5D.Video.Compression=H.264&Encode%5B0%5D.ExtraFormat%5B0%5D.Video.$res&Encode%5B0%5D.ExtraFormat%5B0%5D.Video.FPS=15&Encode%5B0%5D.ExtraFormat%5B0%5D.Video.GOP=15&Encode%5B0%5D.ExtraFormat%5B0%5D.Video.BitRate=384&Encode%5B0%5D.ExtraFormat%5B0%5D.Video.BitRateControl=CBR")"
+    echo "camera: ${out:-no reply}"; case "$out" in *OK*) break;; esac
+  done
+  sub=1
+else
+  cfg "Encode%5B0%5D.MainFormat%5B0%5D.Video.Compression=H.264&Encode%5B0%5D.MainFormat%5B0%5D.Video.FPS=15&Encode%5B0%5D.MainFormat%5B0%5D.Video.BitRate=2048&Encode%5B0%5D.MainFormat%5B0%5D.Video.GOP=30" >/dev/null
+  sub=0
+fi
+
+pub="$(grep '^PUBLISH_URL=' "$ENV")"
+newurl="$(printf '%s' "$url" | sed -E "s#subtype=[0-9]#subtype=$sub#")"
+umask 077
+printf 'CAMERA_RTSP=%s\n%s\n' "$newurl" "$pub" > "$ENV"
+systemctl restart camstream-relay
+sleep 8
+ffprobe -v error -rtsp_transport tcp -select_streams v:0 -show_entries stream=codec_name,width,height,avg_frame_rate -of default=nw=1 "$newurl" || true
+systemctl is-active camstream-relay

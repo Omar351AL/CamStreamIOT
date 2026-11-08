@@ -8,7 +8,10 @@ pprof: no
 playback: no
 hls: no
 rtmp: no
-srt: no
+# Pi publishes over SRT (UDP, tolerates packet loss on the 4G uplink). Auth uses the same
+# 'publisher' internal user via the SRT streamid.
+srt: yes
+srtAddress: :8890
 moq: no
 
 # Pi pushes here (RTSP over TCP, authenticated).

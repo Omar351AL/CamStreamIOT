@@ -42,7 +42,10 @@ install -m 644 "$SRC/server/camstream-mediamtx.service" /etc/systemd/system/cams
 systemctl daemon-reload
 systemctl enable --now camstream-mediamtx
 
-install -m 644 "$SRC/server/nginx-camstream.conf" /etc/nginx/sites-available/camstream
+# Never overwrite the live site once Certbot has added its TLS block.
+if ! grep -qs ssl_certificate /etc/nginx/sites-available/camstream; then
+  install -m 644 "$SRC/server/nginx-camstream.conf" /etc/nginx/sites-available/camstream
+fi
 ln -sf /etc/nginx/sites-available/camstream /etc/nginx/sites-enabled/camstream
 if nginx -t; then systemctl reload nginx; else rm -f /etc/nginx/sites-enabled/camstream; echo "nginx test failed, site removed"; exit 1; fi
 
