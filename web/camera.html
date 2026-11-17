@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live view | CamStream</title>
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><img src="/assets/logo.png" alt="Quantum"></a>
+    <nav class="nav" aria-label="Main">
+      <a href="/" class="active">Cameras</a>
+      <a href="#" data-soon="Recordings">Recordings</a>
+      <a href="#" data-soon="Alerts">Alerts</a>
+      <a href="#" data-soon="Settings">Settings</a>
+    </nav>
+    <div class="user">
+      <button class="user-btn" id="user-btn" aria-haspopup="menu" aria-expanded="false">
+        <span class="avatar" data-initial>A</span><span class="user-name" data-user>admin</span>
+      </button>
+      <div class="menu" id="user-menu" role="menu" hidden>
+        <button role="menuitem" data-soon="Account settings">Account settings</button>
+        <hr>
+        <button role="menuitem" id="sign-out">Sign out</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="crumbs"><a href="/">Cameras</a><span aria-hidden="true">/</span><span id="crumb-name">Camera</span></div>
+
+  <div class="viewer">
+    <div class="stage" id="stage">
+      <video id="video" autoplay muted playsinline></video>
+      <span class="live-tag is-live" id="live-tag" hidden><span class="dot"></span>Live</span>
+      <div class="stage-overlay" id="overlay">
+        <div class="loader">
+          <div class="loader-mark" id="overlay-mark"><img src="/assets/mark.png" alt=""></div>
+          <div class="loader-text" id="overlay-text">Connecting to the camera</div>
+          <button class="btn" id="retry" hidden>Try again</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <h2 id="cam-name">Camera</h2>
+      <p class="sub" id="cam-loc"></p>
+      <dl class="facts">
+        <dt>Status</dt><dd id="f-status">Connecting</dd>
+        <dt>Resolution</dt><dd id="f-res">–</dd>
+        <dt>Model</dt><dd id="f-model">–</dd>
+        <dt>Viewing for</dt><dd id="f-time">–</dd>
+      </dl>
+      <div class="tools">
+        <button class="btn" id="snapshot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          Snapshot
+        </button>
+        <button class="btn" id="fullscreen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          Full screen
+        </button>
+        <button class="btn" data-soon="Recording">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Record
+        </button>
+        <button class="btn" data-soon="Sharing">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>
+          Share
+        </button>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+<script src="/assets/app.js"></script>
+<script src="/assets/viewer.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+[Unit]
+Description=CamStream web backend (login and camera status)
+After=network-online.target camstream-mediamtx.service
+
+[Service]
+Type=simple
+User=camstream
+Group=camstream
+EnvironmentFile=/opt/camstream/web.env
+ExecStart=/usr/bin/python3 /opt/camstream/web/app.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

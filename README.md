@@ -3,23 +3,28 @@
 Live view of an IP camera on `https://camstream.omaralabed.com`.
 
 ```
-Camera --Ethernet/RTSP--> Raspberry Pi (ffmpeg, no re-encode) --RTSP/TCP--> VPS MediaMTX --WebRTC--> nginx --> browser
+Camera --Ethernet/RTSP--> Raspberry Pi (ffmpeg, no re-encode) --SRT (or RTSP/TCP)--> VPS MediaMTX --WebRTC--> nginx --> browser
 ```
 
 ## Layout
-- `server/`  VPS side: MediaMTX config, systemd unit, nginx site, `install-server.sh`
-- `web/`     the one-page site (WebRTC player embedded from MediaMTX)
+- `server/`  VPS side: MediaMTX config, login backend (`camstream-web.py`), systemd units, nginx site, `install-server.sh`
+- `web/`     the site: sign-in page, camera dashboard, live view (own WHEP player), brand assets
 - `pi/`      Raspberry Pi relay script, systemd unit, `relay.env.example`
 - `HANDOFF_PI_SETUP.md`  how the Pi was brought up
 
 ## Server (isolated from other projects)
-Everything lives in `/opt/camstream`, `/var/www/camstream`, the unit `camstream-mediamtx`
-and the nginx site `camstream`. Ports used: 8554/tcp (Pi publishes), 8189/udp+tcp (WebRTC media),
-8889/tcp on 127.0.0.1 only (WebRTC signalling, reached through nginx).
+Everything lives in `/opt/camstream`, `/var/www/camstream`, the units `camstream-mediamtx` and
+`camstream-web`, and the nginx site `camstream`. Public ports: 8554/tcp (RTSP publish), 8890/udp (SRT publish),
+8189/udp+tcp (WebRTC media). Local only: 8889 (WebRTC signalling), 9997 (MediaMTX API), 8410 (login backend).
 
 Deploy from a checkout on the server: `sudo bash server/install-server.sh`.
-It generates the publisher password (`/opt/camstream/publisher_pass`) and the site login
-(`/opt/camstream/web_login.txt`); neither is stored in this repo.
+It generates the publisher password (`/opt/camstream/publisher_pass`) and the login settings
+(`/opt/camstream/web.env`: user, password hash, session secret); neither is stored in this repo.
+The prototype account is `admin` / `admin` (set `CS_ADMIN_PASSWORD` on first install, or edit
+`CS_PASS_SHA256` in `web.env` and restart `camstream-web`, to change it).
+
+nginx guards every page, `/api/` and `/cam/` with `auth_request` against the backend's session cookie;
+only `/login.html`, `/assets/` and `/auth/` are public.
 
 ## Pi
 Copy `pi/camstream-relay` to `/usr/local/bin/`, `pi/camstream-relay.service` to

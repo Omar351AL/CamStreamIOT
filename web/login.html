@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in | CamStream</title>
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<main class="login">
+  <section class="login-brand">
+    <img src="/assets/logo.png" alt="Quantum">
+    <p>Live view of your sites, from anywhere.</p>
+    <small>CamStream by Quantum</small>
+  </section>
+
+  <section class="login-form">
+    <form id="login" novalidate>
+      <h1>Sign in</h1>
+      <p class="lead">Use your CamStream account to see your cameras.</p>
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="login-row">
+        <label><input type="checkbox" checked> Keep me signed in</label>
+        <a href="#" data-soon="Password reset">Forgot password?</a>
+      </div>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+      <p class="form-error" id="error" role="alert"></p>
+    </form>
+  </section>
+</main>
+
+<div class="splash done" id="splash" aria-hidden="true">
+  <div class="loader">
+    <div class="loader-mark"><img src="/assets/mark.png" alt=""></div>
+    <div class="loader-text">Signing in</div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="/assets/app.js"></script>
+<script>
+  const form = document.getElementById('login');
+  const err = document.getElementById('error');
+  const btn = form.querySelector('button');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    if (!form.username.value || !form.password.value) {
+      err.textContent = 'Enter your username and password.';
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const r = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: form.username.value.trim(), password: form.password.value }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        err.textContent = j.error || 'Sign in failed. Try again.';
+        btn.disabled = false;
+        return;
+      }
+      document.getElementById('splash').classList.remove('done');
+      setTimeout(() => { location.href = '/'; }, 700);
+    } catch {
+      err.textContent = 'Could not reach the server. Check your connection and try again.';
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

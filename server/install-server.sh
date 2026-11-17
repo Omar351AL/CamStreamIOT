@@ -1,6 +1,6 @@
 #!/bin/bash
 # Installs CamStream on the VPS. Touches only /opt/camstream, /var/www/camstream,
-# one systemd unit and one nginx site. Run as root from the repo's server/ folder parent.
+# the camstream-* systemd units and the nginx site "camstream". Run as root from a checkout.
 set -euo pipefail
 
 VER="${MEDIAMTX_VERSION:-v1.21.3}"
@@ -29,24 +29,44 @@ sed -e "s|__PUBLISHER_PASS__|$(cat "$APP/publisher_pass")|" -e "s|__PUBLIC_IP__|
 chown root:camstream "$APP/mediamtx.yml"; chmod 640 "$APP/mediamtx.yml"
 chown -R root:camstream "$APP"; chmod 750 "$APP"
 
-HTP=/etc/nginx/camstream.htpasswd
-if [ ! -f "$HTP" ]; then
-  pw="$(openssl rand -base64 12 | tr -d '/+=' | cut -c1-12)"
-  echo "viewer:$(openssl passwd -apr1 "$pw")" > "$HTP"
-  chown root:www-data "$HTP"; chmod 640 "$HTP"
-  printf 'user: viewer\npassword: %s\n' "$pw" > "$APP/web_login.txt"; chmod 600 "$APP/web_login.txt"
+# Web login settings. Default account admin/admin unless CS_ADMIN_PASSWORD is given on first install.
+if [ ! -f "$APP/web.env" ]; then
+  pass="${CS_ADMIN_PASSWORD:-admin}"
+  printf 'CS_USER=%s\nCS_PASS_SHA256=%s\nCS_SECRET=%s\n' "${CS_ADMIN_USER:-admin}" \
+    "$(printf '%s' "$pass" | sha256sum | cut -d' ' -f1)" "$(openssl rand -hex 32)" > "$APP/web.env"
 fi
+chown root:camstream "$APP/web.env"; chmod 640 "$APP/web.env"
+mkdir -p "$APP/web"
+install -m 644 "$SRC/server/camstream-web.py" "$APP/web/app.py"
+chown -R root:camstream "$APP/web"; chmod 750 "$APP/web"
 
-install -m 644 "$SRC/web/index.html" /var/www/camstream/index.html
+# The basic-auth viewer login from the first prototype is replaced by the sign-in page.
+rm -f /etc/nginx/camstream.htpasswd "$APP/web_login.txt"
+
+# Site files: replace the whole folder so removed files do not linger.
+find /var/www/camstream -mindepth 1 -delete
+cp -r "$SRC/web/." /var/www/camstream/
+find /var/www/camstream -type d -exec chmod 755 {} + ; find /var/www/camstream -type f -exec chmod 644 {} +
+
 install -m 644 "$SRC/server/camstream-mediamtx.service" /etc/systemd/system/camstream-mediamtx.service
+install -m 644 "$SRC/server/camstream-web.service" /etc/systemd/system/camstream-web.service
 systemctl daemon-reload
 systemctl enable --now camstream-mediamtx
+systemctl enable camstream-web && systemctl restart camstream-web
 
-# Never overwrite the live site once Certbot has added its TLS block.
-if ! grep -qs ssl_certificate /etc/nginx/sites-available/camstream; then
-  install -m 644 "$SRC/server/nginx-camstream.conf" /etc/nginx/sites-available/camstream
+# nginx: the TLS site once the certificate exists, otherwise the HTTP bootstrap for Certbot.
+SITE=/etc/nginx/sites-available/camstream
+conf="$SRC/server/nginx-camstream-bootstrap.conf"
+[ -f "/etc/letsencrypt/live/$HOST/fullchain.pem" ] && conf="$SRC/server/nginx-camstream.conf"
+[ -f "$SITE" ] && cp -p "$SITE" "$SITE.bak"
+install -m 644 "$conf" "$SITE"
+ln -sf "$SITE" /etc/nginx/sites-enabled/camstream
+if nginx -t; then
+  systemctl reload nginx
+else
+  echo "nginx test failed, restoring the previous site"
+  [ -f "$SITE.bak" ] && cp -p "$SITE.bak" "$SITE" && nginx -t && systemctl reload nginx
+  exit 1
 fi
-ln -sf /etc/nginx/sites-available/camstream /etc/nginx/sites-enabled/camstream
-if nginx -t; then systemctl reload nginx; else rm -f /etc/nginx/sites-enabled/camstream; echo "nginx test failed, site removed"; exit 1; fi
 
-echo "installed. login file: $APP/web_login.txt"
+echo "installed: https://$HOST"
