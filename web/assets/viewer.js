@@ -19,6 +19,8 @@
     overlay.classList.remove('gone');
     mark.hidden = false;
     retry.hidden = true;
+    retry.textContent = 'Try again';
+    retry.onclick = start;
     text.textContent = msg;
     liveTag.hidden = true;
     $('f-status').textContent = 'Connecting';
@@ -28,9 +30,27 @@
     overlay.classList.remove('gone');
     mark.hidden = true;
     retry.hidden = false;
+    retry.textContent = 'Try again';
+    retry.onclick = start;
     text.textContent = msg;
     liveTag.hidden = true;
     $('f-status').textContent = 'Offline';
+  }
+
+  // Some browsers (iPhone Safari, especially in Low Power Mode) block autoplay even for muted
+  // video: the stream arrives but stays paused. Then we ask for one tap to start it.
+  function showTapToPlay() {
+    overlay.classList.remove('gone');
+    mark.hidden = true;
+    retry.hidden = false;
+    retry.textContent = 'Play live video';
+    retry.onclick = () => { video.play().catch(() => {}); };
+    text.textContent = 'Tap to start the live view.';
+  }
+
+  function tryPlay() {
+    video.play().catch(showTapToPlay);
+    setTimeout(() => { if (video.srcObject && video.paused) showTapToPlay(); }, 3000);
   }
 
   function waitForIce(peer, ms) {
@@ -55,7 +75,10 @@
     try {
       pc = new RTCPeerConnection();
       pc.addTransceiver('video', { direction: 'recvonly' });
-      pc.ontrack = (e) => { video.srcObject = e.streams[0] || new MediaStream([e.track]); };
+      pc.ontrack = (e) => {
+        video.srcObject = e.streams[0] || new MediaStream([e.track]);
+        tryPlay();
+      };
       pc.onconnectionstatechange = () => {
         if (pc && (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')) scheduleRetry();
       };
@@ -104,7 +127,7 @@
     $('f-time').textContent = s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`;
   }, 1000);
 
-  retry.addEventListener('click', start);
+  retry.onclick = start;
 
   $('fullscreen').addEventListener('click', () => {
     const stage = $('stage');
