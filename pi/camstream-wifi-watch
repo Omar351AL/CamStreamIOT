@@ -1,0 +1,50 @@
+#!/bin/bash
+# Keeps the Pi reachable over Wi-Fi. When no saved Wi-Fi network has been joined for a while,
+# it starts its own setup hotspot (connection "camstream-setup", see camstream-set-wifi).
+# While the hotspot is up and nobody is connected to it, it periodically retries the saved networks.
+set -u
+
+AP=camstream-setup
+DOWN_AFTER=90      # seconds without a Wi-Fi connection before the hotspot starts
+RETRY_EVERY=300    # seconds between attempts to rejoin saved networks while the hotspot runs
+TRY_FOR=45         # seconds given to NetworkManager to rejoin during an attempt
+
+down_since=""
+ap_since=""
+
+wifi_client_up() {
+  # an active wireless connection that is not our hotspot
+  nmcli -t -f NAME,TYPE,DEVICE con show --active | awk -F: -v ap="$AP" '$2=="802-11-wireless" && $1!=ap {f=1} END {exit !f}'
+}
+ap_up() { nmcli -t -f NAME con show --active | grep -qx "$AP"; }
+ap_has_clients() { [ -n "$(ip neigh show dev wlan0 2>/dev/null | grep -v FAILED)" ]; }
+
+while true; do
+  now=$(date +%s)
+  if wifi_client_up; then
+    down_since=""
+    ap_since=""
+  elif ap_up; then
+    ap_since=${ap_since:-$now}   # also covers a hotspot started by hand or before this ran
+    if [ $((now - ${ap_since:-$now})) -ge "$RETRY_EVERY" ] && ! ap_has_clients; then
+      echo "hotspot idle, retrying saved Wi-Fi networks"
+      nmcli con down "$AP" >/dev/null 2>&1
+      for _ in $(seq "$TRY_FOR"); do wifi_client_up && break; sleep 1; done
+      if wifi_client_up; then
+        echo "rejoined: $(nmcli -t -f NAME,TYPE con show --active | awk -F: '$2=="802-11-wireless"{print $1}')"
+      else
+        echo "no saved network found, hotspot back on"
+        nmcli con up "$AP" >/dev/null 2>&1
+      fi
+      ap_since=$(date +%s)
+    fi
+  else
+    down_since=${down_since:-$now}
+    if [ $((now - down_since)) -ge "$DOWN_AFTER" ]; then
+      echo "no Wi-Fi for ${DOWN_AFTER}s, starting setup hotspot"
+      nmcli con up "$AP" >/dev/null 2>&1 && ap_since=$(date +%s)
+      down_since=""
+    fi
+  fi
+  sleep 10
+done

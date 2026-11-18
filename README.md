@@ -40,3 +40,11 @@ Never commit `relay.env`, passwords or keys (see `.gitignore`).
   (the Dahua factory address is `192.168.1.108`). Without a DHCP server, a DHCP-configured eth0 gets dropped.
 - Set the camera credentials with `sudo camstream-set-camera` (reads the password silently, forces H.264, restarts the relay).
 - To reach the camera's web UI from a laptop: `ssh -L 18080:192.168.1.108:80 -N <user>@<pi>` then open http://127.0.0.1:18080/.
+
+## Pi Wi-Fi and setup hotspot
+- The Pi joins saved Wi-Fi networks automatically (the original `omar` hotspot is saved as an open network).
+- If no saved network is reachable for 90 s, `camstream-wifi-watch` starts the hotspot `CamStream-Setup`
+  (WPA2; its password is in `/etc/camstream/setup-hotspot.txt` on the Pi). The Pi is `10.42.0.1` on it.
+  While nobody is connected, it retries the saved networks every 5 minutes.
+- To save a new network or password: connect to `CamStream-Setup`, then
+  `ssh -t -i ~/.ssh/camstream_pi_key omaral351@10.42.0.1 camstream-set-wifi`.

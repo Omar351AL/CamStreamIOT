@@ -1,0 +1,13 @@
+[Unit]
+Description=CamStream Wi-Fi watchdog (setup hotspot when no network is reachable)
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/camstream-wifi-watch
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
